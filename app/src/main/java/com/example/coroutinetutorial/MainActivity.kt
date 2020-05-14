@@ -63,17 +63,12 @@ class MainActivity : AppCompatActivity() {
                 }
 
             }
-            isJobRunning(job.isActive)
-
-            delay(JOB_TIMEOUT) // wait to see if job completes in this time
-
-            // Cancel Option 1
-            job.cancel(CancellationException("Job took longer than $JOB_TIMEOUT")) // cancel if delay time elapses and job has not completed
-            job.join() // wait for the cancellation to happen
-
-            delay(1000)
-
-            isJobRunning(job.isActive)
+            delay(JOB_TIMEOUT)
+            if(job.isActive){
+                job.cancel(CancellationException("Cancelling job...Job took longer than $JOB_TIMEOUT"))
+                job.join()
+                println("debug: Cancelling job...Job took longer than $JOB_TIMEOUT")
+            }
         }
 
 
