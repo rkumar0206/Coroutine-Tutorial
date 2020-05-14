@@ -21,60 +21,78 @@ class MainActivity : AppCompatActivity() {
             CoroutineScope(IO).launch {
                 fakeApiRequest()
             }
-
         }
-
     }
 
     /**
-     * Comparison between async/await and job/launch patterns.
-     * Major difference is async/await can return a value wrapped in a Deferred type.
+     * async() is a blocking call (similar to the job pattern with job.join())
+     *  NOTES:
+     *  1) IF you don't call await(), it does not wait for the result
+     *  2) Calling await() on both these Deffered values will EXECUTE THEM IN PARALLEL. But the RESULTS won't
+     *     be published until the last result is available (in this case that's result2)
+     *
      */
 
     private suspend fun fakeApiRequest() {
+
 
         withContext(IO) {
 
             val executionTime = measureTimeMillis {
 
-                /*//Classic job/launch
-                var result1 = ""
-                val job1= launch {
-                    println("debug: launching job1: ${Thread.currentThread().name}")
-                    result1 = getResult_1_from_Api()
-                }
-                job1.join()
-
-               var result2 = ""
-               val job2 = launch {
-
-                   println("debug: launchinf job2: ${Thread.currentThread().name}")
-                   result2 = getResult_2_from_Api(result1)
-               }*/
-
-                //Using async/await   (preferred type)
-
-                val result1 = async {
-                    println("debug: launching job1: ${Thread.currentThread().name}")
-
+                val result1: Deferred<String> = async {
+                    showToast("debug: launching job1: ${Thread.currentThread().name}")
                     getResult_1_from_Api()
-                }.await()  //wait for the result 1
-
-                println("Got result1: $result1")
+                }
 
                 val result2 = async {
+                    showToast("debug: launching job2: ${Thread.currentThread().name}")
+                    getResult_2_from_Api()
+                }
 
-                    println("debug: launching job1: ${Thread.currentThread().name}")
+                setTextOnMainThread("Got ${result1.await()}")  //we will have to call await here to get the results
+                setTextOnMainThread("Got ${result2.await()}")
 
-                    getResult_2_from_Api(result1)
-                }.await()
-                println("Got result2: $result2")
 
             }
-            println("job1 and job2 are complete. It took $executionTime ms")
-            setTextOnMainThread("job1 and job2 are complete. It took $executionTime ms")
+            println("debug: job1 and job2 are complete. It took $executionTime ms")
+            setTextOnMainThread("\njob1 and job2 are completed. It took $executionTime ms")
         }
     }
+
+
+    /*//using job/launch pattern
+    private fun fakeApiRequest(){
+
+
+        val startTime = System.currentTimeMillis()
+        val parentJob =  CoroutineScope(IO).launch {
+
+            val job1 = launch {
+
+                val time1 = measureTimeMillis {
+                    println("launching job1 in thread: ${Thread.currentThread().name}")
+                    val result1 = getResult_1_from_Api()
+                    setTextOnMainThread("Got ${result1}")
+                }
+                showToast("job 1 took $time1 ms")
+            }
+
+            val job2 = launch {
+                val time2 = measureTimeMillis {
+
+                    println("launching job2 in thread: ${Thread.currentThread().name}")
+                    val result2 = getResult_2_from_Api()
+                    setTextOnMainThread("Got ${result2}")
+                }
+                showToast("job 2 took $time2 ms")
+            }
+        }
+        parentJob.invokeOnCompletion {
+            println("debug: job1 and job2 are complete. It took ${System.currentTimeMillis() - startTime} ms")
+            showToast("\njob1 and job2 are completed. It took ${System.currentTimeMillis() - startTime} ms")
+        }
+    }*/
 
     private fun setNewText(input: String) {
 
@@ -107,21 +125,18 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private suspend fun getResult_2_from_Api(result1: String): String {
+    private suspend fun getResult_2_from_Api(): String {
 
         delay(1700)
-        if (result1 == "Result #1") {
-            return "Result #2"
 
-        }
-        return "Result #1 was incorrect"
+        return "Result #2"
     }
 
 
     private fun showToast(msg: String) {
         GlobalScope.launch(Main) {
 
-            Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+            Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
         }
     }
 
